@@ -1,68 +1,4 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DropX Leads</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111827;
-      color: white;
-      margin: 0;
-      padding: 20px;
-    }
-
-    h1 {
-      margin-bottom: 20px;
-    }
-
-    .card {
-      background: #1f2937;
-      padding: 15px;
-      border-radius: 10px;
-      margin-bottom: 15px;
-      border: 1px solid #374151;
-    }
-
-    .lead {
-      padding: 12px;
-      border-bottom: 1px solid #374151;
-    }
-
-    .lead:last-child {
-      border-bottom: none;
-    }
-
-    button {
-      background: #2563eb;
-      border: none;
-      color: white;
-      padding: 10px 15px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 8px;
-      margin-top: 6px;
-      margin-bottom: 10px;
-      background: #111827;
-      color: white;
-      border: 1px solid #374151;
-      border-radius: 6px;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>DropX Leads Dashboard</h1>
-
-  <div class="card">
-    <h2>Dashboard</h2>
-    <div id="dashboard">Loading...</div>
   </div>
 
   <div class="card">
@@ -71,4 +7,73 @@
   </div>
 
   <script>
+
+    const API_URL = 'https://script.google.com/macros/s/AKfycbxhCWZfHaNhaNJgfAZaUad6EhdtGj5yWRhw2mbFqN8d_1RRcQwJTFQFm869I0w0vr2SFw/exec';
+
+    async function api(action, payload = {}) {
+      try {
+
+        const response = await fetch(API_URL + '?action=' + action, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        return await response.json();
+
+      } catch (err) {
+        console.error(err);
+        alert('API Error');
+      }
+    }
+
+
+    async function loadDashboard() {
+
+      const data = await api('dashboard');
+
+      document.getElementById('dashboard').innerHTML = `
+        <p>Total Leads: ${data.total || 0}</p>
+        <p>Pending: ${data.pending || 0}</p>
+        <p>Interview: ${data.interview || 0}</p>
+      `;
+    }
+
+
+    async function loadLeads() {
+
+      const leads = await api('leads');
+
+      const container = document.getElementById('leads');
+
+      if (!Array.isArray(leads)) {
+        container.innerHTML = 'No leads found';
+        return;
+      }
+
+      container.innerHTML = '';
+
+      leads.forEach(lead => {
+
+        const div = document.createElement('div');
+        div.className = 'lead';
+
+        div.innerHTML = `
+          <h3>${lead.full_name || 'No Name'}</h3>
+          <p>${lead.phone || ''}</p>
+          <p>${lead.station_name || ''}</p>
+
+          <select onchange="updateStatus('${lead.lead_id}', this.value)">
+            <option value="">Select Status</option>
+            <option value="No Response">No Response</option>
+            <option value="Call Back">Call Back</option>
+            <option value="Interview Scheduled">Interview Scheduled</option>
+            <option value="Not Interested">Not Interested</option>
+          </select>
+        `;
+
+        container.appendChild(div);
+      });
 </html>
