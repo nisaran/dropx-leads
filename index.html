@@ -722,19 +722,32 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <script>
 
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbzG4k7hPLt2wDhW270d65OqE3khWbUia5aun2VoV1bR1K-pAxnrBC2GGollkhGxAh9-pA/exec";
+// ═══════════════════════════════════════════════════════════════════
+// GITHUB API BRIDGE (Replaces google.script.run)
+// ═══════════════════════════════════════════════════════════════════
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzG4k7hPLt2wDhW270d65OqE3khWbUia5aun2VoV1bR1K-pAxnrBC2GGollkhGxAh9-pA/exec";
 
-  async function callGAS(action, params = {}) {
-  const query = new URLSearchParams({ action, ...params }).toString();
+async function callApi(action, params = {}) {
+  const url = new URL(WEB_APP_URL);
+  url.searchParams.append("action", action);
+  
+  // Pass current user info for logging if available
+  if (typeof STATE !== 'undefined' && STATE.currentUser) {
+    url.searchParams.append("userEmail", STATE.currentUser.email);
+  }
+
+  Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+
   try {
-    const response = await fetch(`${GAS_URL}?${query}`);
-    const data = await response.json();
-    return data;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Network response was not ok');
+    return await response.json();
   } catch (e) {
     console.error("API Error:", e);
+    return { error: e.toString() };
   }
 }
-  
+
 var G={user:null,activePage:'dash',allLeads:[],fullLeadsLoaded:false,pendingLeads:[],interviewLeads:[],stations:[],clusters:[],stationSummary:[],roleSummary:[],jobTypes:[],multi:{}};
 var ADMIN_ROLES=['admin','owner','hr','finance'];
 function roleKey(u){return String((u&&u.roleKey)||((u&&u.role)||'')).toLowerCase()}
@@ -1798,13 +1811,13 @@ function submitAdModal(){
   var reason=document.getElementById('ad-modal-reason').value;
   var btn=document.getElementById('ad-modal-submit');
   setButtonLoading(btn,true,mode==='budget'?'Changing...':'Stopping...');
-  var runner=google.script.run.withSuccessHandler(function(){setButtonLoading(btn,false);closeAdModal();loadAds();}).withFailureHandler(function(e){setButtonLoading(btn,false);err(e);});
+  var runner=callApi('saveCell', {leadId:leadId, field:field, oldVal:oldVal, newVal:newVal}).then(function(){setButtonLoading(btn,false);closeAdModal();loadAds();}).withFailureHandler(function(e){setButtonLoading(btn,false);err(e);});
   if(mode==='budget') runner.requestBudgetChange(id,budget,reason||'');
   if(mode==='stop') runner.requestStopAd(id,reason||'');
 }
 
 function adminBudget(adId,budget){
-  google.script.run.withSuccessHandler(function(){loadAds();}).withFailureHandler(err).updateAdBudget(adId,budget);
+  callApi('saveCell', {leadId:leadId, field:field, oldVal:oldVal, newVal:newVal}).then(function(){loadAds();}).withFailureHandler(err).updateAdBudget(adId,budget);
 }
 
 // ── SOP & TEAM ────────────────────────────────────────────────────────
@@ -1921,6 +1934,33 @@ function showStaleInfo(e){
   document.body.appendChild(tip);
   setTimeout(function(){document.addEventListener('click',function h(){tip.remove();document.removeEventListener('click',h)});},100);
 }
+
+// Force Bypass Login
+setTimeout(() => {
+  var ls = document.getElementById('login-screen');
+  if(ls) ls.style.display = 'none';
+  var ap = document.getElementById('app');
+  if(ap) ap.style.display = 'flex';
+}, 100);
+
+
+window.onload = function() {
+  // BYPASS LOGIN SCREEN
+  var loginScreen = document.getElementById('login-screen');
+  var appScreen = document.getElementById('app');
+  if(loginScreen) loginScreen.style.display = 'none';
+  if(appScreen) appScreen.style.display = 'flex';
+
+  // LOAD DATA FROM API
+  callApi('getInitialData').then(data => {
+    if (data && !data.error) {
+      initApp(data);
+    } else {
+      console.error("Failed to load initial data", data);
+    }
+  });
+};
+
 </script>
 </body>
 </html>
