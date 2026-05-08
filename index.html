@@ -723,6 +723,18 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <script>
 
   const GAS_URL = "https://script.google.com/macros/s/AKfycbzG4k7hPLt2wDhW270d65OqE3khWbUia5aun2VoV1bR1K-pAxnrBC2GGollkhGxAh9-pA/exec";
+
+  async function callGAS(action, params = {}) {
+  const query = new URLSearchParams({ action, ...params }).toString();
+  try {
+    const response = await fetch(`${GAS_URL}?${query}`);
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error("API Error:", e);
+  }
+}
+  
 var G={user:null,activePage:'dash',allLeads:[],fullLeadsLoaded:false,pendingLeads:[],interviewLeads:[],stations:[],clusters:[],stationSummary:[],roleSummary:[],jobTypes:[],multi:{}};
 var ADMIN_ROLES=['admin','owner','hr','finance'];
 function roleKey(u){return String((u&&u.roleKey)||((u&&u.role)||'')).toLowerCase()}
