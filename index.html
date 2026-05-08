@@ -748,6 +748,28 @@ async function callApi(action, params = {}) {
   }
 }
 
+  async function loadInitialData() {
+
+  const data = await callApi("getInitialData");
+
+  console.log("DATA:", data);
+
+  if (data.error) {
+    alert(data.error);
+    return;
+  }
+
+  // Store data
+  STATE.data = data;
+
+  // Render UI
+  renderDashboard(data);
+}
+
+loadInitialData();
+
+  
+
 var G={user:null,activePage:'dash',allLeads:[],fullLeadsLoaded:false,pendingLeads:[],interviewLeads:[],stations:[],clusters:[],stationSummary:[],roleSummary:[],jobTypes:[],multi:{}};
 var ADMIN_ROLES=['admin','owner','hr','finance'];
 function roleKey(u){return String((u&&u.roleKey)||((u&&u.role)||'')).toLowerCase()}
@@ -777,37 +799,6 @@ function showAccessDenied(reason){
     '</div></div>';
   var dash=document.getElementById('dash-tbl');
   if(dash) dash.innerHTML=msg;
-}
-
-
-function syncLeadsManually() {
-  var btn = document.getElementById('sync-btn');
-  if (!btn) return;
-  
-  // Start the loading spinner
-  btn.classList.add('spin');
-  
-  console.log("Starting Sync...");
-
-  // We call 'syncLeads' because that is what your backend doGet(e) expects
-  callApi('syncLeads').then(res => {
-    btn.classList.remove('spin');
-    
-    if (res && res.synced !== undefined) {
-      alert("Sync Complete: " + res.synced + " new leads added.");
-      // Refresh the data on the screen
-      callApi('getInitialData').then(data => {
-        if(data) initApp(data);
-      });
-    } else {
-      alert("Sync failed. Check Google Script logs.");
-      console.error("Sync Error Details:", res);
-    }
-  }).catch(err => {
-    btn.classList.remove('spin');
-    alert("Connection Error: Could not reach Google Script.");
-    console.error(err);
-  });
 }
 
 window.onload=function(){
