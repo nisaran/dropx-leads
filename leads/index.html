@@ -786,14 +786,25 @@ window.DROPX_GOOGLE_CLIENT_ID = '643379754939-sb2qpikb5mioidksnp36of3rlsk82i1a.a
       } else if(tries>40){ clearInterval(timer); showAppMessage('Could not load Google Sign-In. Refresh the page and try again.'); }
     },250);
   };
+  function dropxJsonp(payload){
+    return new Promise(function(resolve,reject){
+      var cb='dropx_rpc_'+Date.now()+'_'+Math.floor(Math.random()*1000000);
+      var script=document.createElement('script');
+      var timer=setTimeout(function(){ cleanup(); reject(new Error('Backend request timed out')); },45000);
+      function cleanup(){ clearTimeout(timer); try{ delete window[cb]; }catch(e){ window[cb]=undefined; } if(script&&script.parentNode) script.parentNode.removeChild(script); }
+      window[cb]=function(data){ cleanup(); resolve(data); };
+      script.onerror=function(){ cleanup(); reject(new Error('Could not load Apps Script backend. Check deployment access and URL.')); };
+      script.src=window.DROPX_API_URL+'?callback='+encodeURIComponent(cb)+'&payload='+encodeURIComponent(JSON.stringify(payload))+'&_='+Date.now();
+      document.head.appendChild(script);
+    });
+  }
   function makeRunner(successHandler,failureHandler){
     return new Proxy({}, { get:function(_,prop){
       if(prop==='withSuccessHandler') return function(handler){ return makeRunner(handler,failureHandler); };
       if(prop==='withFailureHandler') return function(handler){ return makeRunner(successHandler,handler); };
       return function(){
         var args=Array.prototype.slice.call(arguments);
-        return fetch(window.DROPX_API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:String(prop),args:args,idToken:getIdToken()})})
-          .then(function(res){ return res.json(); })
+        return dropxJsonp({fn:String(prop),args:args,idToken:getIdToken()})
           .then(function(data){ if(!data || data.ok===false) throw new Error((data&&data.error)||'Backend request failed'); if(successHandler) successHandler(data.result); return data.result; })
           .catch(function(err){ if(/expired/i.test(err.message||'')){ localStorage.removeItem('dropx_google_id_token'); initGoogleLogin(); } if(failureHandler) failureHandler(err); else console.error(err); });
       };
@@ -803,7 +814,8 @@ window.DROPX_GOOGLE_CLIENT_ID = '643379754939-sb2qpikb5mioidksnp36of3rlsk82i1a.a
   window.google.script=window.google.script||{};
   window.google.script.run=makeRunner(null,null);
 })();
-</script><script>
+</script>
+<script>
 var G={user:null,activePage:'dash',allLeads:[],fullLeadsLoaded:false,pendingLeads:[],interviewLeads:[],stations:[],clusters:[],stationSummary:[],roleSummary:[],jobTypes:[],multi:{},leadQuickFilter:'',leadFinalFilter:'',sorts:{leads:{key:'synced_at',dir:'desc'},pending:{key:'last_updated',dir:'asc'},interviews:{key:'follow_up_date',dir:'asc'},ads:{key:'total_spend',dir:'desc'}},adsRows:[]};
 var ADMIN_ROLES=['admin','owner','hr','finance'];
 function roleKey(u){return String((u&&u.roleKey)||((u&&u.role)||'')).toLowerCase()}
@@ -2278,6 +2290,7 @@ function showStaleInfo(e){
 </script>
 </body>
 </html>
+
 
 
 
