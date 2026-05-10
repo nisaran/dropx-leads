@@ -24,6 +24,17 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:13px}
 
+
+#boot-loader{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+.boot-card{width:min(420px,92vw);background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px 30px;text-align:center;box-shadow:0 18px 60px rgba(15,17,23,.12)}
+.boot-logo{font-size:20px;font-weight:700;margin-bottom:14px;color:var(--text)}
+.boot-logo span{color:var(--accent)}
+.boot-spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin .8s linear infinite;margin:0 auto 16px}
+.boot-title{font-size:15px;font-weight:600;margin-bottom:6px}
+.boot-msg{font-size:12px;color:var(--text3);line-height:1.5;min-height:18px}
+.boot-bar{height:3px;width:100%;background:linear-gradient(90deg,var(--dx-yellow),var(--dx-orange),var(--dx-red),var(--dx-pink));border-radius:999px;margin-top:18px;overflow:hidden}
+.boot-bar:after{content:'';display:block;height:100%;width:35%;background:rgba(255,255,255,.55);animation:bootSlide 1.25s ease-in-out infinite}
+@keyframes bootSlide{0%{transform:translateX(-110%)}100%{transform:translateX(300%)}}
 /* -- */
 #login-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:999;
   flex-direction:column;align-items:center;justify-content:center;gap:24px}
@@ -372,6 +383,15 @@ tr:hover td{background:rgba(255,255,255,.015)}
 </style>
 </head>
 <body>
+<div id="boot-loader">
+  <div class="boot-card">
+    <div class="boot-logo">Drop<span>X</span></div>
+    <div class="boot-spinner"></div>
+    <div class="boot-title">Loading dashboard</div>
+    <div class="boot-msg" id="boot-msg">Checking Google sign-in...</div>
+    <div class="boot-bar"></div>
+  </div>
+</div>
 
 <!-- Access is checked against the Users sheet after Google opens the web app. -->
 <div id="login-screen" style="display:none">
@@ -772,6 +792,7 @@ window.DROPX_GOOGLE_CLIENT_ID = '643379754939-sb2qpikb5mioidksnp36of3rlsk82i1a.a
   window.doGoogleLogin = function(){ if(window.google && google.accounts && google.accounts.id) google.accounts.id.prompt(); };
   window.dropxSignOut = function(){ localStorage.removeItem('dropx_google_id_token'); if(window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); location.reload(); };
   window.initGoogleLogin = function(){
+    if(window.hideBootLoader) window.hideBootLoader();
     var screen=document.getElementById('login-screen'), app=document.getElementById('app');
     if(screen) screen.style.display='flex';
     if(app) app.style.display='none';
@@ -827,12 +848,24 @@ function isAdmin(u){return u&&(u.isAdmin||ADMIN_ROLES.indexOf(roleKey(u))!==-1)}
 // shown while we verify the user exists in the Users sheet.
 // doGoogleLogin is defined by the Google Sign-In bridge above.
 
+function showBootLoader(msg){
+  var loader=document.getElementById('boot-loader');
+  var text=document.getElementById('boot-msg');
+  if(text&&msg) text.textContent=msg;
+  if(loader) loader.style.display='flex';
+}
+function hideBootLoader(){
+  var loader=document.getElementById('boot-loader');
+  if(loader) loader.style.display='none';
+}
 function showAppMessage(msg){
+  hideBootLoader();
   var target=document.getElementById('dash-tbl')||document.getElementById('content');
   if(target) target.innerHTML='<div class="tbl-card"><div class="empty">'+esc(msg||'Unable to load data')+'</div></div>';
 }
 
 function showAccessDenied(reason){
+  hideBootLoader();
   var app=document.getElementById('app');
   var screen=document.getElementById('login-screen');
   if(screen) screen.style.display='none';
@@ -848,6 +881,7 @@ function showAccessDenied(reason){
 }
 
 window.startDropxApp=function(){
+  showBootLoader('Loading leads...');
   var screen=document.getElementById('login-screen');
   var app=document.getElementById('app');
   if(screen) screen.style.display='none';
@@ -860,6 +894,7 @@ window.startDropxApp=function(){
       renderUser();
       initStaticFilterMultis();
       renderDash(d||{stats:{total:0,noStatus:0,pending:0,interviews:0,callback:0,stale:0},stale:[],recentLeads:[]});
+      hideBootLoader();
       loadStationsAndClusters();
       loadJobTypes();
       startAutoRefresh();
@@ -870,7 +905,7 @@ window.startDropxApp=function(){
     })
     .getDashboardData();
 };
-window.onload=function(){ if(localStorage.getItem('dropx_google_id_token')) window.startDropxApp(); else initGoogleLogin(); };
+window.onload=function(){ if(localStorage.getItem('dropx_google_id_token')){ showBootLoader('Restoring session. Loading leads...'); window.startDropxApp(); } else initGoogleLogin(); };
 
 // --
 function renderUser(){
@@ -2290,6 +2325,7 @@ function showStaleInfo(e){
 </script>
 </body>
 </html>
+
 
 
 
